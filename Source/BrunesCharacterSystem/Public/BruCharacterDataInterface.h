@@ -23,9 +23,12 @@ class BRUNESCHARACTERSYSTEM_API IBruCharacterDataInterface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 	
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Character Data")
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Brune's Character System")
+	void SetCharacterData(TSubclassOf<UBruCharacterData> InCharacterData);
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Brune's Character System")
 	TSubclassOf<UBruCharacterData> GetCharacterData();
 
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Character Data")
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Brune's Character System")
 	void GetCharacterMesh(UMeshComponent*& OutMeshComponent);
 };

@@ -2,7 +2,7 @@
 
 #include "BruCharacterManager.h"
 #include "BruCharacterDataInterface.h"
-
+#include "GameFramework/Pawn.h"
 
 // Sets default values
 ABruCharacterManager::ABruCharacterManager()

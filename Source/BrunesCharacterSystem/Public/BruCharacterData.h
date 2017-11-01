@@ -1,7 +1,7 @@
 
 
 #pragma once
-
+#include "Engine/Texture2D.h"
 #include "BruCharacterData.generated.h"
 
 /**

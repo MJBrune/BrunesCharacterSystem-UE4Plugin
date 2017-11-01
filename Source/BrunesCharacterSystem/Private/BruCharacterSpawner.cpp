@@ -2,6 +2,8 @@
 
 #include "BruCharacterSpawner.h"
 #include "GameFramework/GameMode.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "BruCharacterManagerInterface.h"
 #include "BruCharacterDataInterface.h"
 #include "BruCharacterManager.h"
@@ -11,7 +13,7 @@
 // Sets default values
 ABruCharacterSpawner::ABruCharacterSpawner()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	RootSceneComponent = CreateDefaultSubobject<USceneComponent>("Root Scene Component");
 	SetRootComponent(RootSceneComponent);
@@ -38,14 +40,14 @@ void ABruCharacterSpawner::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 	if (IsValid(CharacterClass))
 	{
-		UBruCharacterData* DefaultCharData = Cast<UBruCharacterData>(CharacterClass->GetDefaultObject());
+		const UBruCharacterData* DefaultCharData = Cast<UBruCharacterData>(CharacterClass->GetDefaultObject());
 		const bool IsObjectsValid = IsValid(DefaultCharData) && IsValid(DefaultCharData->WorldActorClass);
 		if (IsObjectsValid && DefaultCharData->WorldActorClass->ImplementsInterface(UBruCharacterDataInterface::StaticClass()))
 		{
 			CachedActorClass = DefaultCharData->WorldActorClass;
 			UMeshComponent* TempMeshComponent = nullptr;
 			IBruCharacterDataInterface::Execute_GetCharacterMesh(CachedActorClass->GetDefaultObject(), TempMeshComponent);
-			USkeletalMeshComponent* TempSkelMesh = Cast<USkeletalMeshComponent>(TempMeshComponent);
+			const USkeletalMeshComponent* TempSkelMesh = Cast<USkeletalMeshComponent>(TempMeshComponent);
 
 			if (IsValid(TempSkelMesh))
 			{
@@ -58,9 +60,9 @@ void ABruCharacterSpawner::OnConstruction(const FTransform& Transform)
 			{
 				EditorSkelMesh->SetSkeletalMesh(nullptr);
 			}
-			
-			 IBruCharacterDataInterface::Execute_GetCharacterMesh(CachedActorClass->GetDefaultObject(), TempMeshComponent);
-			UStaticMeshComponent* TempStatMesh = Cast<UStaticMeshComponent>(TempMeshComponent);
+
+			IBruCharacterDataInterface::Execute_GetCharacterMesh(CachedActorClass->GetDefaultObject(), TempMeshComponent);
+			const UStaticMeshComponent* TempStatMesh = Cast<UStaticMeshComponent>(TempMeshComponent);
 
 			if (IsValid(TempStatMesh))
 			{
@@ -85,7 +87,7 @@ void ABruCharacterSpawner::OnConstruction(const FTransform& Transform)
 	{
 		EditorSkelMesh->SetSkeletalMesh(nullptr);
 		EditorStatMesh->SetStaticMesh(nullptr);
-		SpawnerOutput->SetText(LOCTEXT("Debug","CharacterClass Not Set!"));
+		SpawnerOutput->SetText(LOCTEXT("Debug", "CharacterClass Not Set!"));
 	}
 }
 
@@ -114,9 +116,9 @@ void ABruCharacterSpawner::BeginPlay()
 			Params.ObjectFlags &= ~RF_Transactional;
 		}
 
-		FVector Location = GetActorLocation();
-		FRotator Rotation = GetActorRotation();
-		
+		const FVector Location = GetActorLocation();
+		const FRotator Rotation = GetActorRotation();
+
 		UWorld* World = GetWorld();
 
 		AActor* NewActor = World->SpawnActor(CachedActorClass, &Location, &Rotation, Params);
@@ -127,18 +129,35 @@ void ABruCharacterSpawner::BeginPlay()
 			{
 				NewPawn->SpawnDefaultController();
 			}
-			NewActor->FinishSpawning(GetActorTransform());
 
+			IBruCharacterDataInterface::Execute_SetCharacterData(NewActor, CharacterClass);
+			
 			AGameModeBase* GameMode = World->GetAuthGameMode();
-
+			ABruCharacterManager* CharacterManager = nullptr;
 			if (GameMode->GetClass()->ImplementsInterface(UBruCharacterManagerInterface::StaticClass()))
 			{
-				ABruCharacterManager* CharacterManager = IBruCharacterManagerInterface::Execute_GetCharacterManager(GameMode);
-				if (IsValid(CharacterManager))
+				CharacterManager = IBruCharacterManagerInterface::Execute_GetCharacterManager(GameMode);
+				UBruCharacterData* DefaultCharData = Cast<UBruCharacterData>(CharacterClass->GetDefaultObject());
+
+				if (DefaultCharData->bIsUnique)
 				{
-					CharacterManager->RegisterCharacter(NewPawn);
+					if (IsValid(CharacterManager) && IsValid(CharacterManager->FindCharacter(CharacterClass)))
+					{
+						//Should be unique. Kill the chosen one!
+						NewActor->Destroy();
+						return;
+					}
+
 				}
 			}
+
+			NewActor->FinishSpawning(GetActorTransform());
+
+			if (IsValid(CharacterManager))
+			{
+				CharacterManager->RegisterCharacter(NewPawn);
+			}
+
 		}
 	}
 
