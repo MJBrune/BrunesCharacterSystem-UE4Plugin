@@ -18,7 +18,7 @@ class UBruCharacterDataInterface : public UInterface
  */
 class BRUNESCHARACTERSYSTEM_API IBruCharacterDataInterface
 {
-	GENERATED_BODY()
+	GENERATED_IINTERFACE_BODY()
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
@@ -27,7 +27,7 @@ public:
 	void SetCharacterData(TSubclassOf<UBruCharacterData> InCharacterData);
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Brune's Character System")
-	TSubclassOf<UBruCharacterData> GetCharacterData();
+	UBruCharacterData* GetCharacterData();
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Brune's Character System")
 	void GetCharacterMesh(UMeshComponent*& OutMeshComponent);

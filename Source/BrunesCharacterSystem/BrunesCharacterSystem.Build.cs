@@ -43,7 +43,8 @@ public class BrunesCharacterSystem : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-
+				"AIModule",
+				"GameplayAbilities",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

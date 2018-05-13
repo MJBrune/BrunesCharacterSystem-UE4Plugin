@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "BrunesCharacterSystem",
+	"FriendlyName": "Brune's Character System",
 	"Description": "A named character spawning system for large scale RPG games or narrative games that need to spawn different NPCs at different points.",
 	"Category": "Other",
 	"CreatedBy": "Underflow Studios",
@@ -17,7 +17,16 @@
 		{
 			"Name": "BrunesCharacterSystem",
 			"Type": "Runtime",
-			"LoadingPhase": "PreLoadingScreen"
+			"LoadingPhase": "PreLoadingScreen",
+			"AdditionalDependencies": [
+				"GameplayAbilities"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
 		}
 	]
 }

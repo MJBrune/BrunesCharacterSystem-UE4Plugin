@@ -13,7 +13,10 @@ struct FBruCachedCharacterInfo
 public:
 	//Character Data Class 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Basic)
-	TSubclassOf<UBruCharacterData> CharacterDataClass;
+	UBruCharacterData* CharacterData;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Basic)
+	FName AITaskRegion;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Basic)
 	APawn* InstancedCharacter;

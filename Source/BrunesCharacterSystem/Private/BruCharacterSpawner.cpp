@@ -7,14 +7,17 @@
 #include "BruCharacterManagerInterface.h"
 #include "BruCharacterDataInterface.h"
 #include "BruCharacterManager.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
+#include "BruCharacterStrength.h"
+#include "BruCharacterWeakness.h"
 
 #define LOCTEXT_NAMESPACE "ABruCharacterSpawner"
 
-// Sets default values
 ABruCharacterSpawner::ABruCharacterSpawner()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false; // TICK IS OFF
+
 	RootSceneComponent = CreateDefaultSubobject<USceneComponent>("Root Scene Component");
 	SetRootComponent(RootSceneComponent);
 	EditorSkelMesh = CreateDefaultSubobject<USkeletalMeshComponent>("Editor Skeleton Mesh");
@@ -32,12 +35,28 @@ ABruCharacterSpawner::ABruCharacterSpawner()
 	SpawnerOutput->SetVisibility(true, true);
 	SpawnerOutput->SetupAttachment(GetRootComponent());
 	SpawnerOutput->SetVerticalAlignment(EVRTA_TextCenter);
+	SpawnerOutput->SetHorizontalAlignment(EHTA_Center);
 	SpawnerOutput->SetRelativeLocationAndRotation(FVector(0.f, 0.f, 100.f), FRotator(0.f, 00.f, 0.f));
 }
 
 void ABruCharacterSpawner::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+	ExtractActorFromCharacterClass();
+}
+
+void ABruCharacterSpawner::BeginPlay()
+{
+	Super::BeginPlay();
+	if (ShouldSpawnInBeginPlay)
+	{
+		SpawnActorFromCharacterClass();
+		Destroy(); //Spawned it, did my thing, gunna go die nao. RIP
+	}
+}
+
+void ABruCharacterSpawner::ExtractActorFromCharacterClass()
+{
 	if (IsValid(CharacterClass))
 	{
 		const UBruCharacterData* DefaultCharData = Cast<UBruCharacterData>(CharacterClass->GetDefaultObject());
@@ -91,16 +110,9 @@ void ABruCharacterSpawner::OnConstruction(const FTransform& Transform)
 	}
 }
 
-// Called every frame
-void ABruCharacterSpawner::Tick(float DeltaTime)
+AActor* ABruCharacterSpawner::SpawnActorFromCharacterClass()
 {
-	Super::Tick(DeltaTime);
-
-}
-
-void ABruCharacterSpawner::BeginPlay()
-{
-	Super::BeginPlay();
+	ExtractActorFromCharacterClass();
 	if (IsValid(CachedActorClass) && Role >= ROLE_Authority)
 	{
 		FActorSpawnParameters Params;
@@ -122,22 +134,25 @@ void ABruCharacterSpawner::BeginPlay()
 		UWorld* World = GetWorld();
 
 		AActor* NewActor = World->SpawnActor(CachedActorClass, &Location, &Rotation, Params);
-		if (NewActor)
-		{
-			APawn* NewPawn = Cast<APawn>(NewActor);
-			if (NewPawn)
-			{
-				NewPawn->SpawnDefaultController();
-			}
+		APawn* NewPawn = Cast<APawn>(NewActor);
 
+		if (NewPawn)
+		{
 			IBruCharacterDataInterface::Execute_SetCharacterData(NewActor, CharacterClass);
-			
+
 			AGameModeBase* GameMode = World->GetAuthGameMode();
 			ABruCharacterManager* CharacterManager = nullptr;
-			if (GameMode->GetClass()->ImplementsInterface(UBruCharacterManagerInterface::StaticClass()))
+
+			UBruCharacterData* DefaultCharData = Cast<UBruCharacterData>(CharacterClass->GetDefaultObject());
+
+			if (IsValid(DefaultCharData->AIControllerOverride))
+			{
+				NewPawn->AIControllerClass = DefaultCharData->AIControllerOverride;
+			}
+
+			if (GameMode && GameMode->GetClass()->ImplementsInterface(UBruCharacterManagerInterface::StaticClass()))
 			{
 				CharacterManager = IBruCharacterManagerInterface::Execute_GetCharacterManager(GameMode);
-				UBruCharacterData* DefaultCharData = Cast<UBruCharacterData>(CharacterClass->GetDefaultObject());
 
 				if (DefaultCharData->bIsUnique)
 				{
@@ -145,22 +160,47 @@ void ABruCharacterSpawner::BeginPlay()
 					{
 						//Should be unique. Kill the chosen one!
 						NewActor->Destroy();
-						return;
+						return nullptr;
 					}
-
 				}
 			}
+
+			SetupActor(NewActor, DefaultCharData);
+
+			NewPawn->SpawnDefaultController();
 
 			NewActor->FinishSpawning(GetActorTransform());
 
 			if (IsValid(CharacterManager))
 			{
-				CharacterManager->RegisterCharacter(NewPawn);
+				CharacterManager->RegisterCharacter(NewPawn, AITaskRegion);
 			}
 
+			return NewPawn;
 		}
 	}
 
-	Destroy(); //Spawned it, did my thing, gunna go die nao. RIP
+	return nullptr;
+
 }
 
+void ABruCharacterSpawner::SetupActor(AActor* NewActor, UBruCharacterData* DefaultCharData)
+{
+	IAbilitySystemInterface* AbilityInterface = Cast<IAbilitySystemInterface>(NewActor);
+	if (AbilityInterface)
+	{
+		for (TSubclassOf<UBruCharacterStrength> StrengthClass : DefaultCharData->CharacterStrengths)
+		{
+			UBruCharacterStrength* BruStrength = StrengthClass->GetDefaultObject<UBruCharacterStrength>();
+
+			for (TSubclassOf<UGameplayEffect> GameplayEffectsClass : BruStrength->GameplayEffects)
+			{
+
+				UAbilitySystemComponent* AbilitySystemComponent = AbilityInterface->GetAbilitySystemComponent();
+				AbilitySystemComponent->ApplyGameplayEffectToSelf(GameplayEffectsClass->GetDefaultObject<UGameplayEffect>(), 1.f, FGameplayEffectContextHandle());
+			}
+		}
+	}
+}
+
+#undef LOCTEXT_NAMESPACE
